@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uber Fare Predictor</title>
+<style>
+  :root {
+    --navy: #14172b; --navy2: #1e2340; --yellow: #ffc300; --ink: #1b1f2a;
+    --mute: #6b7086; --line: #dfe1ec; --bg: #f5f6fa; --red: #c0392b; --redbg: #fdecea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Calibri, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--navy); color: #fff; padding: 28px 24px 30px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  header .kicker { color: var(--yellow); font-size: 12px; letter-spacing: 2.5px; font-weight: 700; text-transform: uppercase; }
+  header h1 { margin: 6px 0 4px; font-family: Cambria, Georgia, serif; font-size: 32px; }
+  header p { margin: 0; color: #aeb3cc; font-size: 15px; }
+  main { max-width: 1080px; margin: 28px auto 40px; padding: 0 24px; display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; align-items: start; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 26px; box-shadow: 0 4px 14px rgba(20,23,43,.08); }
+  fieldset { border: 0; padding: 0; margin: 0 0 22px; }
+  legend { font-weight: 700; font-size: 12px; letter-spacing: 1.5px; color: var(--mute); text-transform: uppercase; padding: 0; margin-bottom: 12px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; margin-bottom: 12px; }
+  label { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  label .req { color: var(--red); }
+  input, select { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #c9ccdc; border-radius: 8px; background: #fff; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid var(--yellow); border-color: var(--navy); }
+  .invalid input, .invalid select { border-color: var(--red); background: var(--redbg); }
+  .msg { color: var(--red); font-size: 12.5px; margin-top: 4px; }
+  .hint { color: var(--mute); font-size: 12px; margin-top: 4px; }
+  .quick { margin-bottom: 12px; }
+  .quick select { width: 100%; font-size: 13.5px; }
+  .banner { background: var(--redbg); border: 1px solid #f0b3ab; color: #8f2a1f; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px; font-size: 14px; }
+  .banner strong { display: block; margin-bottom: 4px; }
+  .banner ul { margin: 4px 0 0 18px; padding: 0; }
+  button { width: 100%; background: var(--yellow); color: var(--navy); font-weight: 800; font-size: 16px; border: 0; border-radius: 10px; padding: 14px; cursor: pointer; }
+  button:hover { filter: brightness(.95); }
+  .result { background: var(--navy); color: #fff; border-radius: 12px; padding: 26px; }
+  .result .label { color: var(--yellow); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .result .fare { font-family: Cambria, Georgia, serif; font-size: 56px; font-weight: 700; margin: 6px 0 14px; }
+  .result dl { margin: 0; border-top: 1px solid #343a63; }
+  .result dt { color: #aeb3cc; font-size: 12px; margin-top: 12px; }
+  .result dd { margin: 2px 0 0; font-size: 15px; }
+  .note { color: #8288a6; font-size: 12px; margin-top: 18px; line-height: 1.5; }
+  .placeholder { color: var(--mute); }
+  .placeholder h2 { font-family: Cambria, Georgia, serif; color: var(--ink); font-size: 20px; margin-top: 0; }
+  .placeholder ul { padding-left: 18px; line-height: 1.7; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="kicker">ML Internship · Task 3</div>
+    <h1>Uber Fare Predictor</h1>
+    <p>Enter your trip details to get an estimated New York City fare.</p>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    {% if errors %}
+    <div class="banner" role="alert">
+      <strong>We couldn't make a prediction yet. Please fix the following:</strong>
+      <ul>
+        {% if errors.get('form') %}<li>{{ errors['form'] }}</li>{% endif %}
+        {% for key, text in errors.items() if key != 'form' %}<li>{{ text }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" action="/" autocomplete="off">
+      <fieldset>
+        <legend>1 · Route</legend>
+        <div class="quick">
+          <label for="pickup_preset">Pickup quick-fill (optional)</label>
+          <select id="pickup_preset" data-target="pickup">
+            <option value="">Choose a landmark…</option>
+            {% for name, lat, lon in presets %}<option value="{{ lat }},{{ lon }}">{{ name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <div class="field {{ 'invalid' if errors.get('pickup_latitude') }}">
+            <label for="pickup_latitude">Pickup latitude <span class="req">*</span></label>
+            <input id="pickup_latitude" name="pickup_latitude" type="number" step="any" required value="{{ values.get('pickup_latitude', '') }}">
+            {% if errors.get('pickup_latitude') %}<span class="msg">{{ errors['pickup_latitude'] }}</span>{% endif %}
+          </div>
+          <div class="field {{ 'invalid' if errors.get('pickup_longitude') }}">
+            <label for="pickup_longitude">Pickup longitude <span class="req">*</span></label>
+            <input id="pickup_longitude" name="pickup_longitude" type="number" step="any" required value="{{ values.get('pickup_longitude', '') }}">
+            {% if errors.get('pickup_longitude') %}<span class="msg">{{ errors['pickup_longitude'] }}</span>{% endif %}
+          </div>
+        </div>
+
+        <div class="quick">
+          <label for="dropoff_preset">Dropoff quick-fill (optional)</label>
+          <select id="dropoff_preset" data-target="dropoff">
+            <option value="">Choose a landmark…</option>
+            {% for name, lat, lon in presets %}<option value="{{ lat }},{{ lon }}">{{ name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <div class="field {{ 'invalid' if errors.get('dropoff_latitude') }}">
+            <label for="dropoff_latitude">Dropoff latitude <span class="req">*</span></label>
+            <input id="dropoff_latitude" name="dropoff_latitude" type="number" step="any" required value="{{ values.get('dropoff_latitude', '') }}">
+            {% if errors.get('dropoff_latitude') %}<span class="msg">{{ errors['dropoff_latitude'] }}</span>{% endif %}
+          </div>
+          <div class="field {{ 'invalid' if errors.get('dropoff_longitude') }}">
+            <label for="dropoff_longitude">Dropoff longitude <span class="req">*</span></label>
+            <input id="dropoff_longitude" name="dropoff_longitude" type="number" step="any" required value="{{ values.get('dropoff_longitude', '') }}">
+            {% if errors.get('dropoff_longitude') %}<span class="msg">{{ errors['dropoff_longitude'] }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="hint">Valid NYC range: latitude 40.40 – 41.10, longitude −74.50 – −73.40.</div>
+      </fieldset>
+
+      <fieldset>
+        <legend>2 · Trip details</legend>
+        <div class="row">
+          <div class="field {{ 'invalid' if errors.get('pickup_datetime') }}">
+            <label for="pickup_datetime">Pickup date &amp; time <span class="req">*</span></label>
+            <input id="pickup_datetime" name="pickup_datetime" type="datetime-local" required value="{{ values.get('pickup_datetime', '') }}">
+            {% if errors.get('pickup_datetime') %}<span class="msg">{{ errors['pickup_datetime'] }}</span>
+            {% else %}<span class="hint">Model trained on {{ year_min }}–{{ year_max }} trips.</span>{% endif %}
+          </div>
+          <div class="field {{ 'invalid' if errors.get('passenger_count') }}">
+            <label for="passenger_count">Passengers <span class="req">*</span></label>
+            <input id="passenger_count" name="passenger_count" type="number" step="1" required value="{{ values.get('passenger_count', '') }}">
+            {% if errors.get('passenger_count') %}<span class="msg">{{ errors['passenger_count'] }}</span>
+            {% else %}<span class="hint">Whole number, 1 – 6.</span>{% endif %}
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>3 · Conditions</legend>
+        <div class="row">
+          <div class="field {{ 'invalid' if errors.get('weather') }}">
+            <label for="weather">Weather <span class="req">*</span></label>
+            <select id="weather" name="weather" required>
+              {% for c in categories['Weather'] %}<option value="{{ c }}" {{ 'selected' if values.get('weather') == c }}>{{ c|title }}</option>{% endfor %}
+            </select>
+            {% if errors.get('weather') %}<span class="msg">{{ errors['weather'] }}</span>{% endif %}
+          </div>
+          <div class="field {{ 'invalid' if errors.get('traffic') }}">
+            <label for="traffic">Traffic <span class="req">*</span></label>
+            <select id="traffic" name="traffic" required>
+              {% for c in categories['Traffic Condition'] %}<option value="{{ c }}" {{ 'selected' if values.get('traffic') == c }}>{{ c }}</option>{% endfor %}
+            </select>
+            {% if errors.get('traffic') %}<span class="msg">{{ errors['traffic'] }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="field {{ 'invalid' if errors.get('car_condition') }}" style="max-width:50%">
+          <label for="car_condition">Car condition <span class="req">*</span></label>
+          <select id="car_condition" name="car_condition" required>
+            {% for c in categories['Car Condition'] %}<option value="{{ c }}" {{ 'selected' if values.get('car_condition') == c }}>{{ c }}</option>{% endfor %}
+          </select>
+          {% if errors.get('car_condition') %}<span class="msg">{{ errors['car_condition'] }}</span>{% endif %}
+        </div>
+      </fieldset>
+
+      <button type="submit">Predict fare</button>
+    </form>
+  </section>
+
+  <aside>
+    {% if result %}
+    <div class="result" aria-live="polite">
+      <div class="label">Estimated fare</div>
+      <div class="fare">${{ result.fare }}</div>
+      <dl>
+        <dt>Trip distance</dt><dd>{{ result.distance_km }} km</dd>
+        <dt>Pickup time</dt><dd>{{ result.when }}</dd>
+        <dt>Passengers</dt><dd>{{ result.passengers }}</dd>
+        <dt>Conditions</dt><dd>{{ result.conditions }}</dd>
+      </dl>
+      <div class="note">Prediction from the {{ model_name }} model. This is an estimate, not a quote.</div>
+    </div>
+    {% else %}
+    <div class="card placeholder">
+      <h2>Your prediction will appear here</h2>
+      <ul>
+        <li>Fill in the route, time and conditions.</li>
+        <li>Fields marked <span style="color:var(--red)">*</span> are required.</li>
+        <li>Use the quick-fill menus to drop in a famous NYC location.</li>
+      </ul>
+    </div>
+    {% endif %}
+  </aside>
+</main>
+
+<script>
+  document.querySelectorAll('select[data-target]').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      if (!sel.value) return;
+      var parts = sel.value.split(',');
+      var t = sel.dataset.target;
+      document.getElementById(t + '_latitude').value = parts[0];
+      document.getElementById(t + '_longitude').value = parts[1];
+    });
+  });
+</script>
+</body>
+</html>

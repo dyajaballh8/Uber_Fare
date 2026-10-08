@@ -1,0 +1,53 @@
+{
+  "model_name": "Gradient Boosting",
+  "bearing_convention": "signed",
+  "categories": {
+    "Weather": [
+      "cloudy",
+      "rainy",
+      "stormy",
+      "sunny",
+      "windy"
+    ],
+    "Traffic Condition": [
+      "Congested Traffic",
+      "Dense Traffic",
+      "Flow Traffic"
+    ],
+    "Car Condition": [
+      "Bad",
+      "Good",
+      "Very Good",
+      "Excellent"
+    ]
+  },
+  "year_range": [
+    2009,
+    2015
+  ],
+  "feature_columns": [
+    "distance",
+    "jfk_dist",
+    "ewr_dist",
+    "lga_dist",
+    "sol_dist",
+    "nyc_dist",
+    "passenger_count",
+    "bearing",
+    "Car Condition",
+    "Weather",
+    "Traffic Condition",
+    "hour_sin",
+    "hour_cos",
+    "is_weekend",
+    "day",
+    "month",
+    "year"
+  ],
+  "test_metrics": {
+    "test_MAE": 1.7967816392093916,
+    "test_RMSE": 3.7216189378977234,
+    "test_R2": 0.8295445938459731
+  },
+  "justification": "I am deploying the Gradient Boosting, which scored a test-set MAE of $1.80, RMSE of $3.72 and R\u00b2 of 0.830. It had the lowest test RMSE of all four models; the next best (Random Forest) reached $3.85. Its test RMSE is 16% higher than its training RMSE ($3.22), so the decision rests on unseen-data performance rather than a memorised fit. Scoring 1,000 trips takes about 7 ms, which is fast enough for a real-time Flask endpoint. Tree ensembles are harder to interpret than a linear model, but feature importances still show which inputs drive the fare."
+}
